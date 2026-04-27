@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Daft Carlow Map</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 9999;
+            background: white;
+            padding: 14px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            width: 260px;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100vw;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        select, input {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .count {
+            margin-top: 10px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="controls">
+    <label>Max Price: €<span id="priceValue">10000</span></label>
+    <input type="range" id="priceSlider" min="0" max="10000" value="10000" step="50">
+
+    <label>Beds</label>
+    <select id="bedsFilter">
+        <option value="all">All</option>
+        <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="6">6</option>
+    </select>
+
+    <label>Type</label>
+    <select id="typeFilter">
+        <option value="all">All</option>
+        <option value="House">House</option>
+    </select>
+
+    <label>Shared</label>
+    <select id="sharedFilter">
+        <option value="all">All</option>
+        <option value="true">Shared only</option>
+        <option value="false">Rent only</option>
+    </select>
+
+    <div class="count">
+        Showing <span id="resultCount">0</span> listings
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const listings = [{"address": "16 The Grain Store, Singleton's Lane, Bagenalstown, Co. Carlow", "price": 1650, "beds": 3, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-16-the-grain-store-singletons-lane-bagenalstown-co-carlow/6503860", "lat": 52.703234, "lon": -6.962638}, {"address": "2 Montgomery Street, Carlow, Graiguecullen, Co. Carlow", "price": 1400, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-2-montgomery-street-carlow-graiguecullen-co-carlow/6546320", "lat": 52.841012, "lon": -6.930432}, {"address": "8 Chaff Street Apartments, Chaff Street, Graiguecullen, Co. Carlow", "price": 1600, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-8-chaff-street-apartments-chaff-street-graiguecullen-co-carlow/6546134", "lat": 52.8363, "lon": -6.93905}, {"address": "Apartment 1, 44-47 Tullow Street, Carlow Town, Co. Carlow", "price": 1600, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-apartment-1-44-47-tullow-street-graiguecullen-co-carlow/6511527", "lat": 52.835874, "lon": -6.927619}, {"address": "Apartment 15, Ferrybank Apartment Complex, Leighlin Road, Graiguecullen, Co. Carlow", "price": 1600, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-apartment-15-ferrybank-apartment-complex-leighlin-road-graiguecullen-co-carlow/6536308", "lat": 52.834073, "lon": -6.938675}, {"address": "Apartment 4, The Old Mill, Church Street, Leighlin, Leighlinbridge, Co. Carlow", "price": 1850, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-apartment-4-the-old-mill-church-street-leighlin-leighlinbridge-co-carlow/6550695", "lat": 52.735762, "lon": -6.979548}, {"address": "Block B, The Mill, Mill Street, Baltinglass, Co. Wicklow", "price": 1450, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-block-b-the-mill-mill-street-baltinglass-co-wicklow/6544810", "lat": 52.941714, "lon": -6.711373}, {"address": "Centaur Court, Centaur Street, Graiguecullen, Co. Carlow", "price": 1700, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-centaur-court-centaur-street-graiguecullen-co-carlow/6442116", "lat": 52.837179, "lon": -6.935672}, {"address": "Centaur House, Centaur Street, Carlow Town, Co. Carlow", "price": 1600, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-centaur-house-centaur-street-carlow-town-co-carlow/6516747", "lat": 52.837285, "lon": -6.934266}, {"address": "College Gardens, Carlow, Carlow Town, Co. Carlow", "price": 737, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-college-gardens-carlow-carlow-town-co-carlow/6547868", "lat": 52.830946, "lon": -6.932172}, {"address": "Highfield Ballickmoyler , Arless, Co. Laois", "price": 1100, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-healing-herbs-highfield-house-the-strand-ballic-arless-co-laois/6522513", "lat": 52.865623, "lon": -7.025676}, {"address": "Keenans Lane, Castledermot, Castledermot, Co. Kildare", "price": 1500, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-keenans-lane-castledermot-castledermot-co-kildare/6541066", "lat": 52.912227, "lon": -6.837435}, {"address": "near Ardattin , Ardattin, Co. Carlow", "price": 1500, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-near-ardattin-ardattin-co-carlow/6482019", "lat": 52.758652239288, "lon": -6.7213382233823}, {"address": "leighlinbridge co carlow, Leighlinbridge, Co. Carlow", "price": 1600, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/apartment-poes-hill-leighlinbridge-carlow-leighlinbridge-co-carlow/6508591", "lat": 52.736396, "lon": -6.979953}, {"address": "17 Centaur Court, Centaur Street, Graiguecullen, Co. Carlow", "price": 1550, "beds": 2, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/flat-17-centaur-court-centaur-street-graiguecullen-co-carlow/6536149", "lat": 52.836927, "lon": -6.935296}, {"address": "10 The Glen, Green Road, Carlow Town, Co. Carlow", "price": 2000, "beds": 6, "baths": "3", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-10-the-glen-green-road-carlow-town-co-carlow/6550125", "lat": 52.820811601076, "lon": -6.9400193809815}, {"address": "11 Allen Dale Park, Baltinglass, Co. Wicklow", "price": 2000, "beds": 3, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-11-allen-dale-park-baltinglass-co-wicklow/6534825", "lat": 52.932916, "lon": -6.692914}, {"address": "12 Burrindale Pollerton Big Carlow, Pollerton, Co. Carlow", "price": 1850, "beds": 3, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-12-burrindale-pollerton-big-carlow-pollerton-co-carlow/6531619", "lat": 52.842085751661, "lon": -6.9006838213771}, {"address": "16 Cluain Buí, Quinagh, Carlow Town, Co. Carlow", "price": 1800, "beds": 3, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-16-cluain-bu-quinagh-carlow-town-co-carlow/6552923", "lat": 52.818751, "lon": -6.935991}, {"address": "18 Beech Road, Rivercourt, Carlow Town, Co. Carlow", "price": 1800, "beds": 3, "baths": "3", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-18-beech-road-rivercourt-carlow-town-co-carlow/6523742", "lat": 52.826471, "lon": -6.91851}, {"address": "22 The Paddocks, Browneshill Road, Carlow Town, Co. Carlow", "price": 2000, "beds": 3, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-22-the-paddocks-browneshill-road-carlow-town-co-carlow/6520463", "lat": 52.832521, "lon": -6.903722}, {"address": "29 Killerig Golf Lodges, Tullow, Grange, Co. Carlow", "price": 1600, "beds": 3, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-29-killerig-golf-lodges-tullow-grange-co-carlow/6495781", "lat": 52.837525, "lon": -6.784404}, {"address": "5 Barrack Street, Carlow, Carlow Town, Co. Carlow", "price": 2000, "beds": 3, "baths": "3", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-5-barrack-street-carlow-carlow-town-co-carlow/6517198", "lat": 52.835353, "lon": -6.924939}, {"address": "91 The Close, Willow Park, Carlow Town, Co. Carlow", "price": 1800, "beds": 3, "baths": "3", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-91-the-close-willow-park-carlow-town-co-carlow/6546036", "lat": 52.826601, "lon": -6.904539}, {"address": "Colclough Avenue, Graiguecullen, Co. Carlow", "price": 2100, "beds": 4, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-colclough-avenue-graiguecullen-co-carlow/6545169", "lat": 52.840754, "lon": -6.939532}, {"address": "Davidstown Lower, Castledermot, Castledermot, Co. Kildare", "price": 1600, "beds": 3, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-davidstown-lower-castledermot-castledermot-co-kildare/6544825", "lat": 52.888768, "lon": -6.821005}, {"address": "Highfield, Dublin Road, Carlow Town, Co. Carlow", "price": 2000, "beds": 4, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-highfield-dublin-road-carlow-town-co-carlow/6539403", "lat": 52.846494, "lon": -6.908842}, {"address": "R95YW65, Graiguenamanagh, Co. Kilkenny", "price": 1600, "beds": 2, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-r95yw65-graiguenamanagh-co-kilkenny/6508897", "lat": 52.585969642551, "lon": -6.9475027332221}, {"address": "Rahill, Rathvilly, Carlow, Rathvilly, Co. Carlow", "price": 1700, "beds": 3, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-rahill-rathvilly-carlow-rathvilly-co-carlow/6544675", "lat": 52.909741, "lon": -6.704006}, {"address": "Sand Hills, Hacketstown Road, Carlow Town, Co. Carlow", "price": 2150, "beds": 3, "baths": "3", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-sand-hills-hacketstown-road-carlow-town-co-carlow/6511342", "lat": 52.840725142448, "lon": -6.9015437867882}, {"address": "Ullard R95XH02, Graiguenamanagh, Co. Kilkenny", "price": 1200, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-ullard-r95xh02-graiguenamanagh-co-kilkenny/6548392", "lat": 52.585969642551, "lon": -6.9475027332221}, {"address": "Williamstown, Rathvilly, Hacketstown, Co. Carlow", "price": 1300, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-williamstown-rathvilly-hacketstown-co-carlow/6542896", "lat": 52.860376, "lon": -6.647508}, {"address": "Wolseley park, Tullow, Co. Carlow", "price": 2300, "beds": 4, "baths": "3", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/house-wolseley-park-tullow-co-carlow/6516963", "lat": 52.792675593349, "lon": -6.7248437771579}, {"address": "Edward Street, Baltinglass, Co. Wicklow", "price": 1500, "beds": 1, "baths": "1", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/property-edward-street-baltinglass-co-wicklow/6499488", "lat": 52.9375130296702, "lon": -6.7024058645419}, {"address": "Presentation Place, Carlow Town, Co. Carlow", "price": 1600, "beds": 3, "baths": "2", "type": "House", "shared": "false", "link": "https://www.daft.ie/for-rent/property-presentation-place-carlow-town-co-carlow/6547876", "lat": 52.836341, "lon": -6.927699}, {"address": "Bullock Park (behind SETU), Carlow Town, Co. Carlow", "price": 607, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/-bullock-park-behind-setu-carlow-town-co-carlow/6532160", "lat": 52.82067452415, "lon": -6.9343655928969}, {"address": "1 Hanover Place, Hanover Road, Carlow, Graiguecullen, Co. Carlow", "price": 693, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/1-hanover-place-hanover-road-carlow-graiguecullen-co-carlow/6547227", "lat": 52.832268, "lon": -6.928675}, {"address": "16 The Crescent, Castle Oaks, Carlow Town, Co. Carlow", "price": 550, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/16-the-crescent-castle-oaks-carlow-town-co-carlow/6549559", "lat": 52.849486, "lon": -6.90339}, {"address": "19 College Green, Green Road, Carlow, Carlow Town, Co. Carlow", "price": 700, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/19-college-green-green-road-carlow-carlow-town-co-carlow/6550395", "lat": 52.819835, "lon": -6.934873}, {"address": "32 Quinagh Green, Quinagh, Carlow, Carlow Town, Co. Carlow", "price": 700, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/32-quinagh-green-quinagh-carlow-carlow-town-co-carlow/6515455", "lat": 52.820611, "lon": -6.92249}, {"address": "54 Spindlewood, Graiguecullen, Co. Laois", "price": 600, "beds": 3, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/54-spindlewood-graiguecullen-co-laois/6500282", "lat": 52.8326704, "lon": -6.9439432}, {"address": "58 Highfield, Dublin Road, Carlow, Carlow Town, Co. Carlow", "price": 953, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/58-highfield-dublin-road-carlow-carlow-town-co-carlow/6553969", "lat": 52.846352, "lon": -6.909265}, {"address": "9 Saint Clare'S Road, Graiguecullen, Carlow, Graiguecullen, Co. Carlow", "price": 477, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/9-saint-clares-road-graiguecullen-carlow-graiguecullen-co-carlow/6536257", "lat": 52.839147, "lon": -6.942309}, {"address": "Ashgrove, Carlow Town, Co. Carlow", "price": 650, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/ashgrove-carlow-town-co-carlow/6222052", "lat": 52.830362406732, "lon": -6.9124069223411}, {"address": "Avondale Carlow, Graiguecullen, Co. Carlow", "price": 889, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/avondale-carlow-graiguecullen-co-carlow/6521353", "lat": 52.832592, "lon": -6.92898}, {"address": "BL, The Quay, Carlow Town, Graiguecullen, Co. Carlow", "price": 780, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/barrow-lodge-the-quay-carlow-town-graiguecullen-co-carlow/6463552", "lat": 52.83707, "lon": -6.93689}, {"address": "Beechwood Park, Pollerton, Carlow, Pollerton, Co. Carlow", "price": 888, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/beechwood-park-pollerton-carlow-pollerton-co-carlow/6551753", "lat": 52.845783, "lon": -6.900582}, {"address": "BL, Carlow Town, Co. Carlow, Graiguecullen, Co. Carlow", "price": 780, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/bl-carlow-town-co-carlow-graiguecullen-co-carlow/6484512", "lat": 52.83707, "lon": -6.93689}, {"address": "BL, Carlow Town, Co. Carlow", "price": 780, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/bl-carlow-town-co-carlow/6301478", "lat": 52.837213631457, "lon": -6.9363693408669}, {"address": "Browneshill Wood,Browneshill Road,Carlow, Carlow Town, Co. Carlow", "price": 950, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/browneshill-wood-browneshill-road-carlow-carlow-town-co-carlow/6480643", "lat": 52.834465, "lon": -6.903834}, {"address": "Bullock Pk, Green Rd, Carlow Town, Co. Carlow", "price": 600, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/bullock-pk-green-rd-carlow-town-co-carlow/6314886", "lat": 52.826770061935, "lon": -6.9357817992568}, {"address": "Burrin Road , Carlow Town, Co. Carlow", "price": 628, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/burrin-road-carlow-town-co-carlow/6503100", "lat": 52.827661024692, "lon": -6.9206670867988}, {"address": "Burrin Street, Carlow, Graiguecullen, Co. Carlow", "price": 737, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/burrin-street-carlow-graiguecullen-co-carlow/6518748", "lat": 52.834741, "lon": -6.932671}, {"address": "Kilkenny Road, Carlow Town, Co. Carlow", "price": 802, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/carlow-kilkenny-road-near-setu-college-graiguecullen-co-carlow/6547989", "lat": 52.833135, "lon": -6.935065}, {"address": "Elm Park Drive, Carlow Town, Co. Carlow", "price": 607, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/elm-park-drive-carlow-town-co-carlow/6195047", "lat": 52.839255278512894, "lon": -6.91729147467484}, {"address": "Friars Green, Tullow Road, Carlow, Carlow Town, Co. Carlow", "price": 650, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/friars-green-tullow-road-carlow-carlow-town-co-carlow/6538923", "lat": 52.829746, "lon": -6.907356}, {"address": "Kennedy Street, Carlow Town, Co. Carlow", "price": 780, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/kennedy-street-carlow-town-co-carlow/6514204", "lat": 52.836489198032, "lon": -6.9349770121929}, {"address": "Knockbeg Road, Carlow Town, Co. Carlow", "price": 498, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/knockbeg-road-carlow-town-co-carlow/6554524", "lat": 52.856907983968, "lon": -6.9500864733835}, {"address": "Millbrook, Mill Lane, Carlow, Lisnavagh, Co. Carlow", "price": 434, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/millbrook-mill-lane-carlow-lisnavagh-co-carlow/6554944", "lat": 52.83568, "lon": -6.936407}, {"address": "Old Burrin,Carlow, Carlow Town, Co. Carlow", "price": 600, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/old-burrin-carlow-carlow-town-co-carlow/6555209", "lat": 52.829762, "lon": -6.920375}, {"address": "Pollerton Rd, Carlow Town, Co. Carlow", "price": 867, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/pollerton-rd-carlow-town-co-carlow/6522788", "lat": 52.844609995857, "lon": -6.9198378377217}, {"address": "Pollerton Road, Carlow, Pollerton, Co. Carlow", "price": 823, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/pollerton-road-carlow-pollerton-co-carlow/6485562", "lat": 52.836961, "lon": -6.918463}, {"address": "Spindlewood,Graiguecullen,Carlow,Co. Laois, Graiguecullen, Co. Laois", "price": 780, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/spindlewood-graiguecullen-carlow-co-laois-graiguecullen-co-laois/6534081", "lat": 52.832924, "lon": -6.943988}, {"address": "Andy Murphy Road, Carlow Town, Co. Carlow", "price": 520, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/springfield-drive-carlow-town-co-carlow/6289111", "lat": 52.840591625619, "lon": -6.9331287376726}, {"address": "Tullow Street, Carlow Town, Co. Carlow", "price": 650, "beds": 0, "baths": "-", "type": "House", "shared": "true", "link": "https://www.daft.ie/share/tullow-street-carlow-town-co-carlow/6554772", "lat": 52.836072061579, "lon": -6.9284178938282}];
+
+const map = L.map('map').setView([52.82920727438658, -6.90121588757396], 11);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+let markers = [];
+
+function clearMarkers() {
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+}
+
+function addMarkers() {
+    clearMarkers();
+
+    const maxPrice = Number(document.getElementById("priceSlider").value);
+    const bedsFilter = document.getElementById("bedsFilter").value;
+    const typeFilter = document.getElementById("typeFilter").value;
+    const sharedFilter = document.getElementById("sharedFilter").value;
+
+    document.getElementById("priceValue").innerText = maxPrice;
+
+    let shown = 0;
+
+    listings.forEach(item => {
+        if (item.price > maxPrice) return;
+        if (bedsFilter !== "all" && String(item.beds) !== bedsFilter) return;
+        if (typeFilter !== "all" && item.type !== typeFilter) return;
+        if (sharedFilter !== "all" && item.shared !== sharedFilter) return;
+
+        const popup = `
+            <b>${item.address}</b><br>
+            €${item.price} / month<br>
+            Beds: ${item.beds}<br>
+            Baths: ${item.baths}<br>
+            Type: ${item.type}<br>
+            Shared: ${item.shared}<br>
+            <a href="${item.link}" target="_blank">Open Listing</a>
+        `;
+
+        const marker = L.marker([item.lat, item.lon])
+            .bindPopup(popup)
+            .bindTooltip(item.address);
+
+        marker.addTo(map);
+        markers.push(marker);
+        shown++;
+    });
+
+    document.getElementById("resultCount").innerText = shown;
+}
+
+document.getElementById("priceSlider").addEventListener("input", addMarkers);
+document.getElementById("bedsFilter").addEventListener("change", addMarkers);
+document.getElementById("typeFilter").addEventListener("change", addMarkers);
+document.getElementById("sharedFilter").addEventListener("change", addMarkers);
+
+addMarkers();
+</script>
+
+</body>
+</html>
